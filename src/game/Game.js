@@ -14,6 +14,16 @@ export default class Game extends React.Component {
         };
     }
 
+    restartClick() {
+        this.setState({
+            history: [{
+                squares: Array(9).fill(null),
+            }],
+            stepNumber: 0,
+            xIsNext: true,
+        })
+    }
+
     calculateWinner(squares) {
         // 勝利條件
         const lines = [
@@ -33,7 +43,7 @@ export default class Game extends React.Component {
                 return squares[a];
             }
         }
-
+        console.log(this.state.stepNumber);
         return null;
     }
 
@@ -83,6 +93,8 @@ export default class Game extends React.Component {
         let status;
         if (winner) {
             status = 'Winner: ' + winner;
+        } else if (this.state.stepNumber === 9) {
+            status = 'Tie!!';
         } else {
             status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
         }
@@ -96,8 +108,10 @@ export default class Game extends React.Component {
                     />
                 </div>
                 <div className="game-info">
-                    <div>{ status }</div>
-                    <ol>{ moves }</ol>
+                    <div>{status}</div>
+                    {this.state.stepNumber === 9 || winner ?
+                        <button onClick={ () => this.restartClick() }>Restart</button> :
+                        <ol>{moves}</ol>}
                 </div>
             </div>
         );
