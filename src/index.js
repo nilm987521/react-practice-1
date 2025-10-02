@@ -1,16 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import App from './App';
 import reportWebVitals from './reportWebVitals';
 import {Provider} from "react-redux";
-import {historyStore} from "./game/store/HistoryStore";
+import {gameStore} from "./game/store/GameStore";
+import Game from './game/Game';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-      <Provider store={historyStore}>
-          <App />
+      <Provider store={gameStore}>
+          <Game />
       </Provider>
   </React.StrictMode>
 );

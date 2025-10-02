@@ -1,23 +1,17 @@
 import React from 'react';
 import Board from "./Board";
 import './game.css';
-import { addStep, clearHistory, regretStep } from './store/HistoryStore';
-import { useSelector, useDispatch } from 'react-redux';
+import {addStep, clearHistory, regretStep, jumpToStep} from './store/GameStore';
+import {useSelector, useDispatch} from 'react-redux';
 
 export default function Game() {
-    const [stepNumberState, setStepNumberState] = React.useState(0);
-    const [xIsNextState, setXIsNextState] = React.useState(true);
-
     // 從 Redux store 獲取狀態
-    const historyStore = useSelector((state) => state.steps);
+    const {history, stepNumber} = useSelector((state) => state);
     // 獲取 dispatch 函數
     const dispatch = useDispatch();
 
     const restartClick = () => {
-        setStepNumberState(0);
-        setXIsNextState(true);
         dispatch(clearHistory());
-        console.log(historyStore);
     }
 
     const calculateWinner = (squares) => {
@@ -33,6 +27,7 @@ export default function Game() {
             [2, 4, 6],
         ];
 
+        // 逐條規則檢查，當前棋盤上是否有連續(3個位子為同樣符號)
         for (let i = 0; i < lines.length; i++) {
             const [a, b, c] = lines[i];
             if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
@@ -43,45 +38,34 @@ export default function Game() {
     }
 
     const handleClick = (i) => {
-
-        const history = historyStore.slice(0, stepNumberState + 1);
-        const current = history[history.length - 1];
+        const __history = history.slice(0, stepNumber + 1);
+        const current = __history[__history.length - 1];
         const squares = current.square.slice();
 
         // 不為null 就return
         if (calculateWinner(squares) || squares[i]) {
             return;
         }
-        squares[i] = xIsNextState ? 'O' : 'X';
-
+        squares[i] = (stepNumber % 2) === 0 ? 'O' : 'X';
         dispatch(addStep({square: squares}));
-
-        setStepNumberState(history.length)
-        setXIsNextState(!xIsNextState);
-    }
-
-    const jumpTo = (step) => {
-        setStepNumberState(step);
-        setXIsNextState((step %2) === 0);
     }
 
     const regret = () => {
-        if (stepNumberState === 0) return;
-        setStepNumberState(stepNumberState - 1);
+        if (stepNumber === 0) return;
         dispatch(regretStep());
     }
 
-    const current = historyStore[stepNumberState].square;
+    const current = history[stepNumber].square;
     const winner = calculateWinner(current);
 
-    const moves = historyStore.map((step, move) => {
+    const moves = history.map((step, move) => {
         const desc = move ?
             'Go to move #' + move :
             'Go to game start';
 
         return (
             <li key={move}>
-                <button onClick={() => jumpTo(move)}>{desc}</button>
+                <button onClick={() => dispatch(jumpToStep(move))}>{desc}</button>
             </li>
         );
     });
@@ -89,10 +73,10 @@ export default function Game() {
     let status;
     if (winner) {
         status = 'Winner: ' + winner;
-    } else if (stepNumberState === 9) {
+    } else if (stepNumber === 9) {
         status = 'Tie!!';
     } else {
-        status = 'Next player: ' + (xIsNextState ? 'O' : 'X');
+        status = 'Next player: ' + ((stepNumber % 2) === 0 ? 'O' : 'X');
     }
 
     return (
@@ -104,10 +88,10 @@ export default function Game() {
                 />
             </div>
             <div className="game-info">
-                { (stepNumberState !== historyStore.length - 1 || historyStore.length === 1) ||
-                    <button onClick={() => regret()}>REGRET!!</button> }
+                {(stepNumber !== history.length - 1 || history.length === 1) ||
+                    <button onClick={() => regret()}>REGRET!!</button>}
                 <div>{status}</div>
-                {stepNumberState === 9 || winner ?
+                {stepNumber === 9 || winner ?
                     <button onClick={() => restartClick()}>Restart</button> :
                     <ol>{moves}</ol>}
             </div>
