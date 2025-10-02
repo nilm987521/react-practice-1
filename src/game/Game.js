@@ -1,21 +1,26 @@
 import React from 'react';
 import Board from "./Board";
 import './game.css';
+import { addStep, clearHistory, regretStep } from './store/HistoryStore';
+import { useSelector, useDispatch } from 'react-redux';
 
 export default function Game() {
     const [stepNumberState, setStepNumberState] = React.useState(0);
-    const [historyState, setHistoryState] =
-        React.useState([{square: Array(9).fill(null)}]);
     const [xIsNextState, setXIsNextState] = React.useState(true);
+
+    // 從 Redux store 獲取狀態
+    const historyStore = useSelector((state) => state.steps);
+    // 獲取 dispatch 函數
+    const dispatch = useDispatch();
 
     const restartClick = () => {
         setStepNumberState(0);
         setXIsNextState(true);
-        setHistoryState([{square: Array(9).fill(null)}]);
+        dispatch(clearHistory());
+        console.log(historyStore);
     }
 
     const calculateWinner = (squares) => {
-        console.log('calculateWinner\'s square:  ', squares);
         // 勝利條件
         const lines = [
             [0, 1, 2],
@@ -39,8 +44,7 @@ export default function Game() {
 
     const handleClick = (i) => {
 
-        const history = historyState.slice(0, stepNumberState + 1);
-        console.log('handleClick => history: ', history);
+        const history = historyStore.slice(0, stepNumberState + 1);
         const current = history[history.length - 1];
         const squares = current.square.slice();
 
@@ -48,8 +52,10 @@ export default function Game() {
         if (calculateWinner(squares) || squares[i]) {
             return;
         }
-        squares[i] = xIsNextState ? 'X' : 'O';
-        setHistoryState(historyState.concat({square: squares}));
+        squares[i] = xIsNextState ? 'O' : 'X';
+
+        dispatch(addStep({square: squares}));
+
         setStepNumberState(history.length)
         setXIsNextState(!xIsNextState);
     }
@@ -58,13 +64,21 @@ export default function Game() {
         setStepNumberState(step);
         setXIsNextState((step %2) === 0);
     }
-    const current = historyState[stepNumberState].square;
+
+    const regret = () => {
+        if (stepNumberState === 0) return;
+        setStepNumberState(stepNumberState - 1);
+        dispatch(regretStep());
+    }
+
+    const current = historyStore[stepNumberState].square;
     const winner = calculateWinner(current);
 
-    const moves = historyState.map((step, move) => {
+    const moves = historyStore.map((step, move) => {
         const desc = move ?
             'Go to move #' + move :
             'Go to game start';
+
         return (
             <li key={move}>
                 <button onClick={() => jumpTo(move)}>{desc}</button>
@@ -78,7 +92,7 @@ export default function Game() {
     } else if (stepNumberState === 9) {
         status = 'Tie!!';
     } else {
-        status = 'Next player: ' + (xIsNextState ? 'X' : 'O');
+        status = 'Next player: ' + (xIsNextState ? 'O' : 'X');
     }
 
     return (
@@ -90,6 +104,8 @@ export default function Game() {
                 />
             </div>
             <div className="game-info">
+                { (stepNumberState !== historyStore.length - 1 || historyStore.length === 1) ||
+                    <button onClick={() => regret()}>REGRET!!</button> }
                 <div>{status}</div>
                 {stepNumberState === 9 || winner ?
                     <button onClick={() => restartClick()}>Restart</button> :
