@@ -1,16 +1,17 @@
 import React from 'react';
 import Board from "./Board";
 import './game.css';
-import {addStep, clearHistory, regretStep, jumpToStep} from './store/GameStore';
+import {addStep, clearHistory, regretStep, jumpToStep, addResult, setIsEnded} from './store/GameStore';
 import {useSelector, useDispatch} from 'react-redux';
 
 export default function Game() {
     // 從 Redux store 獲取狀態
-    const {history, stepNumber} = useSelector((state) => state);
+    const {history, stepNumber, results, isEnded} = useSelector((state) => state);
     // 獲取 dispatch 函數
     const dispatch = useDispatch();
 
     const restartClick = () => {
+        dispatch(setIsEnded(false));
         dispatch(clearHistory());
     }
 
@@ -38,16 +39,22 @@ export default function Game() {
     }
 
     const handleClick = (i) => {
+        if (isEnded) return;
         const __history = history.slice(0, stepNumber + 1);
-        const current = __history[__history.length - 1];
-        const squares = current.square.slice();
+        const previousSquares = __history[__history.length - 1].square.slice();
+        console.log('click: ', previousSquares);
 
-        // 不為null 就return
-        if (calculateWinner(squares) || squares[i]) {
-            return;
+        // 不准重複點/覆蓋
+        if (previousSquares[i]) return;
+
+        const current = [...previousSquares];
+        current[i] = (stepNumber % 2) === 0 ? 'O' : 'X';
+        dispatch(addStep({square: current}));
+
+        if (calculateWinner(current)) {
+            dispatch(setIsEnded(true));
+            dispatch(addResult(current[i]));
         }
-        squares[i] = (stepNumber % 2) === 0 ? 'O' : 'X';
-        dispatch(addStep({square: squares}));
     }
 
     const regret = () => {
@@ -70,6 +77,13 @@ export default function Game() {
         );
     });
 
+    const resultRenderFunc = results.map((result, index) => {
+        return (
+
+            <span key={index}>{(index !==0) && '、'} {index + 1}.{result} </span>
+        )
+    })
+
     let status;
     if (winner) {
         status = 'Winner: ' + winner;
@@ -80,21 +94,24 @@ export default function Game() {
     }
 
     return (
-        <div className="game">
-            <div className="game-board">
-                <Board
-                    squares={current}
-                    onClick={(i) => handleClick(i)}
-                />
+        <div>
+            <div className="game">
+                <div className="game-board">
+                    <Board
+                        squares={current}
+                        onClick={(i) => handleClick(i)}
+                    />
+                </div>
+                <div className="game-info">
+                    {(stepNumber !== history.length - 1 || history.length === 1 || winner != null) ||
+                        <button onClick={() => regret()}>REGRET!!</button>}
+                    <div>{status}</div>
+                    {stepNumber === 9 || winner ?
+                        <button onClick={() => restartClick()}>Restart</button> :
+                        <ol>{moves}</ol>}
+                </div>
             </div>
-            <div className="game-info">
-                {(stepNumber !== history.length - 1 || history.length === 1) ||
-                    <button onClick={() => regret()}>REGRET!!</button>}
-                <div>{status}</div>
-                {stepNumber === 9 || winner ?
-                    <button onClick={() => restartClick()}>Restart</button> :
-                    <ol>{moves}</ol>}
-            </div>
+            <div>{resultRenderFunc}</div>
         </div>
     );
 }
