@@ -1,6 +1,6 @@
 import React from 'react';
 import Square from "./Square";
-import './board.css'
+import './Board.css'
 
 function renderSquare(i, squares, onClick) {
     return <Square

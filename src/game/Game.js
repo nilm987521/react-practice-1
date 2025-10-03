@@ -1,10 +1,15 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import Board from "./Board";
-import './game.css';
+import './Game.css';
 import {addStep, clearHistory, regretStep, jumpToStep, addResult, setIsEnded} from './store/GameStore';
 import {useSelector, useDispatch} from 'react-redux';
 
 export default function Game() {
+    const [player1IsAI, setPlayer1IsAI] = useState(false);
+    const [player2IsAI, setPlayer2IsAI] = useState(false);
+
+    const sleep = ms => new Promise(r => setTimeout(r, ms));
+
     // 從 Redux store 獲取狀態
     const {history, stepNumber, results, isEnded} = useSelector((state) => state);
     // 獲取 dispatch 函數
@@ -42,7 +47,6 @@ export default function Game() {
         if (isEnded) return;
         const __history = history.slice(0, stepNumber + 1);
         const previousSquares = __history[__history.length - 1].square.slice();
-        console.log('click: ', previousSquares);
 
         // 不准重複點/覆蓋
         if (previousSquares[i]) return;
@@ -51,9 +55,13 @@ export default function Game() {
         current[i] = (stepNumber % 2) === 0 ? 'O' : 'X';
         dispatch(addStep({square: current}));
 
+        // 落子後，檢查是否有玩家勝利
         if (calculateWinner(current)) {
             dispatch(setIsEnded(true));
             dispatch(addResult(current[i]));
+        } else if (stepNumber === 8) {
+            dispatch(addResult('='));
+            dispatch(setIsEnded(true));
         }
     }
 
@@ -79,8 +87,7 @@ export default function Game() {
 
     const resultRenderFunc = results.map((result, index) => {
         return (
-
-            <span key={index}>{(index !==0) && '、'} {index + 1}.{result} </span>
+            <span key={index}>{(index !== 0) && '、'} {index + 1}.{result} </span>
         )
     })
 
@@ -92,6 +99,11 @@ export default function Game() {
     } else {
         status = 'Next player: ' + ((stepNumber % 2) === 0 ? 'O' : 'X');
     }
+
+    // 這邊做回合控制
+    // useEffect(() => {
+    //     console.log("123");
+    // }, [history.length]);
 
     return (
         <div>
