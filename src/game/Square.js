@@ -8,13 +8,3 @@ export default function Square(props) {
         </div>
     );
 }
-
-// export default class Square extends React.Component {
-//     render() {
-//         return (
-//             <div className="square" onClick={this.props.onClick}>
-//                 {this.props.value}
-//             </div>
-//         );
-//     }
-// }

@@ -3,12 +3,11 @@ import Board from "./Board";
 import './Game.css';
 import {addStep, clearHistory, regretStep, jumpToStep, addResult, setIsEnded} from './store/GameStore';
 import {useSelector, useDispatch} from 'react-redux';
+import {askAiNextMove} from "./Ai";
 
 export default function Game() {
     const [player1IsAI, setPlayer1IsAI] = useState(false);
     const [player2IsAI, setPlayer2IsAI] = useState(false);
-
-    const sleep = ms => new Promise(r => setTimeout(r, ms));
 
     // 從 Redux store 獲取狀態
     const {history, stepNumber, results, isEnded} = useSelector((state) => state);
@@ -44,6 +43,10 @@ export default function Game() {
     }
 
     const handleClick = (i) => {
+        if (!Number.isInteger(i)) {
+            console.log('not number')
+            return;
+        }
         if (isEnded) return;
         const __history = history.slice(0, stepNumber + 1);
         const previousSquares = __history[__history.length - 1].square.slice();
@@ -52,7 +55,7 @@ export default function Game() {
         if (previousSquares[i]) return;
 
         const current = [...previousSquares];
-        current[i] = (stepNumber % 2) === 0 ? 'O' : 'X';
+        current[i] = (stepNumber % 2) === 0 ? 'X' : 'O';
         dispatch(addStep({square: current}));
 
         // 落子後，檢查是否有玩家勝利
@@ -97,13 +100,20 @@ export default function Game() {
     } else if (stepNumber === 9) {
         status = 'Tie!!';
     } else {
-        status = 'Next player: ' + ((stepNumber % 2) === 0 ? 'O' : 'X');
+        status = 'Next player: ' + ((stepNumber % 2) === 0 ? 'X' : 'O');
     }
 
-    // 這邊做回合控制
-    // useEffect(() => {
-    //     console.log("123");
-    // }, [history.length]);
+    // 這邊做回合控制 => 引入AI對戰
+    useEffect(() => {
+        if (isEnded) return;
+        if ((stepNumber % 2) === 1) {
+            const current = history[stepNumber].square;
+            var next = askAiNextMove('O', current);
+            next.then((result) => {
+                handleClick(result.move);
+            })
+        }
+    }, [history]);
 
     return (
         <div>
@@ -127,119 +137,3 @@ export default function Game() {
         </div>
     );
 }
-
-// export default class Game extends React.Component {
-//     constructor(props) {
-//         super(props);
-//         this.state = {
-//             history: [{
-//                 squares: Array(9).fill(null),
-//             }],
-//             stepNumber: 0,
-//             xIsNext: true,
-//         };
-//     }
-//
-//     restartClick() {
-//         this.setState({
-//             history: [{
-//                 squares: Array(9).fill(null),
-//             }],
-//             stepNumber: 0,
-//             xIsNext: true,
-//         })
-//     }
-//
-//     calculateWinner(squares) {
-//         // 勝利條件
-//         const lines = [
-//             [0, 1, 2],
-//             [3, 4, 5],
-//             [6, 7, 8],
-//             [0, 3, 6],
-//             [1, 4, 7],
-//             [2, 5, 8],
-//             [0, 4, 8],
-//             [2, 4, 6],
-//         ];
-//
-//         for (let i = 0; i < lines.length; i++) {
-//             const [a, b, c] = lines[i];
-//             if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-//                 return squares[a];
-//             }
-//         }
-//         console.log(this.state.stepNumber);
-//         return null;
-//     }
-//
-//     handleClick(i) {
-//         const history = this.state.history.slice(0, this.state.stepNumber + 1);
-//         const current = history[history.length - 1];
-//         const squares = current.squares.slice();
-//
-//         // 不為null 就return
-//         if (this.calculateWinner(squares) || squares[i]) {
-//             return;
-//         }
-//         squares[i] = this.state.xIsNext ? 'X' : 'O';
-//         this.setState({
-//             history: history.concat([{
-//                 squares: squares,
-//             }]),
-//             xIsNext: !this.state.xIsNext,
-//             stepNumber: history.length,
-//         });
-//     }
-//
-//     jumpTo(step) {
-//         this.setState({
-//             stepNumber: step,
-//             xIsNext: (step % 2) === 0,
-//         });
-//     }
-//
-//     render() {
-//         const history = this.state.history;
-//         const current = history[this.state.stepNumber];
-//         const winner = this.calculateWinner(current.squares);
-//
-//         const moves = history.map((step, move) => {
-//             const desc = move ?
-//                 'Go to move #' + move :
-//                 'Go to game start';
-//             return (
-//                 <li key={move}>
-//                     <button onClick={() => this.jumpTo(move)}>{desc}</button>
-//                 </li>
-//             );
-//         });
-//
-//
-//         let status;
-//         if (winner) {
-//             status = 'Winner: ' + winner;
-//         } else if (this.state.stepNumber === 9) {
-//             status = 'Tie!!';
-//         } else {
-//             status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
-//         }
-//
-//         return (
-//             <div className="game">
-//                 <div className="game-board">
-//                     <Board
-//                         squares={current.squares}
-//                         onClick={(i) => this.handleClick(i)}
-//                     />
-//                 </div>
-//                 <div className="game-info">
-//                     <div>{status}</div>
-//                     {this.state.stepNumber === 9 || winner ?
-//                         <button onClick={ () => this.restartClick() }>Restart</button> :
-//                         <ol>{moves}</ol>}
-//                 </div>
-//             </div>
-//         );
-//     }
-// }
