@@ -56,3 +56,8 @@
 .red {
     color: red;
 }
+
+.move-block {
+    max-height: 225px;
+    display: inline-flex;
+}

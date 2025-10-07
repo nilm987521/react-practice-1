@@ -1,9 +1,15 @@
-import React, {useEffect, useState} from 'react';
+import React, {useState} from 'react';
 import Board from "./Board";
 import './Game.css';
-import {addStep, clearHistory, regretStep, jumpToStep, addResult, setIsEnded} from './store/GameStore';
+import {
+    clearHistory,
+    regretStep,
+    jumpToStep,
+    setIsEnded,
+    setPlayer1,
+    setPlayer2
+} from './store/GameStore';
 import {useSelector, useDispatch} from 'react-redux';
-import {askAiNextMove} from "./Ai";
 import {calculateWinner, nextSymbol} from '../util/utils'
 
 export default function Game() {
@@ -13,47 +19,13 @@ export default function Game() {
     const stepNumber = useSelector((state) => state.stepNumber);
     const results = useSelector((state) => state.results);
     const isEnded = useSelector((state) => state.isEnded);
+    const player1 = useSelector((state) => state.player1);
+    const player2 = useSelector((state) => state.player2);
 
     const [isSetupMode, setSetupMode] = useState(true);
-    const [player1, setPlayer1] = useState('human');
-    const [player2, setPlayer2] = useState('human');
 
     // 獲取 dispatch 函數
     const dispatch = useDispatch();
-
-    const handleClick = (i) => {
-        // 輸入不回數字時拋錯
-        if (!Number.isInteger(i)) {
-            throw new Error("invalid number for handleClick");
-        }
-
-        // 遊戲結束時，無法操作
-        if (isEnded) return;
-
-        // Review Mode
-        if (history.length !== stepNumber + 1) {
-            return;
-        }
-
-        const previousSquares = history[history.length - 1].square.slice();
-
-        // 不准重複點/覆蓋
-        if (previousSquares[i]) return;
-
-        const current = [...previousSquares];
-        current[i] = nextSymbol(stepNumber)
-        dispatch(addStep({square: current}));
-
-        // 落子後，檢查是否有玩家勝利
-        const winner = calculateWinner(current);
-        if (winner !== null) {
-            dispatch(setIsEnded(true));
-            dispatch(addResult(winner));
-        } else if (stepNumber === 8) {
-            dispatch(addResult('='));
-            dispatch(setIsEnded(true));
-        }
-    }
 
     const restart = () => {
         dispatch(setIsEnded(false));
@@ -99,25 +71,6 @@ export default function Game() {
         status = 'Next player: ' + nextSymbol(stepNumber) + '(' + ((stepNumber %2) === 0 ? player1 : player2) + ')';
     }
 
-    // 這邊做回合控制 => 引入AI對戰
-    useEffect(() => {
-        if (isEnded) return;
-        if ((stepNumber % 2) === 0 && player1 === 'ai') {
-            const current = history[stepNumber].square;
-            let next = askAiNextMove('O', current);
-            next.then((result) => {
-                handleClick(result.move);
-            });
-        }
-        if ((stepNumber % 2) === 1 && player2 === 'ai') {
-            const current = history[stepNumber].square;
-            let next = askAiNextMove('O', current);
-            next.then((result) => {
-                handleClick(result.move);
-            });
-        }
-    }, [history]);
-
     const options = [
         { value: 'human', label: 'Human' },
         { value: 'ai', label: 'AI' },
@@ -135,7 +88,7 @@ export default function Game() {
                                 name="player1"
                                 value={option.value}
                                 checked={player1 === option.value}
-                                onChange={(e) => setPlayer1(e.target.value)}
+                                onChange={(e) => dispatch(setPlayer1(e.target.value))}
                             />
                             {option.label}
                         </label>
@@ -149,7 +102,7 @@ export default function Game() {
                                 name="player2"
                                 value={option.value}
                                 checked={player2 === option.value}
-                                onChange={(e) => setPlayer2(e.target.value)}
+                                onChange={(e) => dispatch(setPlayer2(e.target.value))}
                             />
                             {option.label}
                         </label>
@@ -163,16 +116,17 @@ export default function Game() {
                     <div className="game-board">
                         <Board
                             squares={current}
-                            onClick={(i) => handleClick(i)}
                         />
                     </div>
                     <div className="game-info">
                         <div>{scoreBoard()}</div>
                         {(!isEnded && stepNumber !== 0) && <button onClick={() => regret()}>REGRET!!</button>}
                         <div>{status}</div>
-                        {stepNumber === 9 || winner ?
-                            <button onClick={() => restart()}>Restart</button> :
-                            <ol>{moves}</ol>}
+                        <div className={'move-block'}>
+                            {stepNumber === 9 || winner ?
+                                <button onClick={() => restart()}>Restart</button> :
+                                <ol>{moves}</ol>}
+                        </div>
                     </div>
                 </div>
             </div> }
