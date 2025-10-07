@@ -4,73 +4,66 @@ import './Game.css';
 import {addStep, clearHistory, regretStep, jumpToStep, addResult, setIsEnded} from './store/GameStore';
 import {useSelector, useDispatch} from 'react-redux';
 import {askAiNextMove} from "./Ai";
+import {calculateWinner, nextSymbol} from '../util/utils'
 
 export default function Game() {
-    const [player1IsAI, setPlayer1IsAI] = useState(false);
-    const [player2IsAI, setPlayer2IsAI] = useState(false);
 
     // 從 Redux store 獲取狀態
-    const {history, stepNumber, results, isEnded} = useSelector((state) => state);
+    const history = useSelector((state) => state.history);
+    const stepNumber = useSelector((state) => state.stepNumber);
+    const results = useSelector((state) => state.results);
+    const isEnded = useSelector((state) => state.isEnded);
+
+    const [isSetupMode, setSetupMode] = useState(true);
+    const [player1, setPlayer1] = useState('human');
+    const [player2, setPlayer2] = useState('human');
+
     // 獲取 dispatch 函數
     const dispatch = useDispatch();
 
-    const restartClick = () => {
-        dispatch(setIsEnded(false));
-        dispatch(clearHistory());
-    }
-
-    const calculateWinner = (squares) => {
-        // 勝利條件
-        const lines = [
-            [0, 1, 2],
-            [3, 4, 5],
-            [6, 7, 8],
-            [0, 3, 6],
-            [1, 4, 7],
-            [2, 5, 8],
-            [0, 4, 8],
-            [2, 4, 6],
-        ];
-
-        // 逐條規則檢查，當前棋盤上是否有連續(3個位子為同樣符號)
-        for (let i = 0; i < lines.length; i++) {
-            const [a, b, c] = lines[i];
-            if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-                return squares[a];
-            }
-        }
-        return null;
-    }
-
     const handleClick = (i) => {
+        // 輸入不回數字時拋錯
         if (!Number.isInteger(i)) {
-            console.log('not number')
+            throw new Error("invalid number for handleClick");
+        }
+
+        // 遊戲結束時，無法操作
+        if (isEnded) return;
+
+        // Review Mode
+        if (history.length !== stepNumber + 1) {
             return;
         }
-        if (isEnded) return;
-        const __history = history.slice(0, stepNumber + 1);
-        const previousSquares = __history[__history.length - 1].square.slice();
+
+        const previousSquares = history[history.length - 1].square.slice();
 
         // 不准重複點/覆蓋
         if (previousSquares[i]) return;
 
         const current = [...previousSquares];
-        current[i] = (stepNumber % 2) === 0 ? 'X' : 'O';
+        current[i] = nextSymbol(stepNumber)
         dispatch(addStep({square: current}));
 
         // 落子後，檢查是否有玩家勝利
-        if (calculateWinner(current)) {
+        const winner = calculateWinner(current);
+        if (winner !== null) {
             dispatch(setIsEnded(true));
-            dispatch(addResult(current[i]));
+            dispatch(addResult(winner));
         } else if (stepNumber === 8) {
             dispatch(addResult('='));
             dispatch(setIsEnded(true));
         }
     }
 
+    const restart = () => {
+        dispatch(setIsEnded(false));
+        dispatch(clearHistory());
+    }
+
     const regret = () => {
         if (stepNumber === 0) return;
         dispatch(regretStep());
+        dispatch(setIsEnded(false));
     }
 
     const current = history[stepNumber].square;
@@ -88,52 +81,101 @@ export default function Game() {
         );
     });
 
-    const resultRenderFunc = results.map((result, index) => {
+    const scoreBoard = () => {
         return (
-            <span key={index}>{(index !== 0) && '、'} {index + 1}.{result} </span>
+            <div>
+                <span className={'green'}>X</span><span>: {results.filter( result => result === 'X').length}&nbsp; &nbsp;</span>
+                <span className={'red'}>O</span><span>: {results.filter( result => result === 'O').length}</span>
+            </div>
         )
-    })
+    }
 
     let status;
     if (winner) {
         status = 'Winner: ' + winner;
     } else if (stepNumber === 9) {
-        status = 'Tie!!';
+        status = 'Draw!!';
     } else {
-        status = 'Next player: ' + ((stepNumber % 2) === 0 ? 'X' : 'O');
+        status = 'Next player: ' + nextSymbol(stepNumber) + '(' + ((stepNumber %2) === 0 ? player1 : player2) + ')';
     }
 
     // 這邊做回合控制 => 引入AI對戰
     useEffect(() => {
         if (isEnded) return;
-        if ((stepNumber % 2) === 1) {
+        if ((stepNumber % 2) === 0 && player1 === 'ai') {
             const current = history[stepNumber].square;
-            var next = askAiNextMove('O', current);
+            let next = askAiNextMove('O', current);
             next.then((result) => {
                 handleClick(result.move);
-            })
+            });
+        }
+        if ((stepNumber % 2) === 1 && player2 === 'ai') {
+            const current = history[stepNumber].square;
+            let next = askAiNextMove('O', current);
+            next.then((result) => {
+                handleClick(result.move);
+            });
         }
     }, [history]);
 
+    const options = [
+        { value: 'human', label: 'Human' },
+        { value: 'ai', label: 'AI' },
+    ];
+
     return (
         <div>
-            <div className="game">
-                <div className="game-board">
-                    <Board
-                        squares={current}
-                        onClick={(i) => handleClick(i)}
-                    />
+            {isSetupMode &&
+                <div>
+                    Player1 is :
+                    {options.map((option) => (
+                        <label key={option.value}>
+                            <input
+                                type="radio"
+                                name="player1"
+                                value={option.value}
+                                checked={player1 === option.value}
+                                onChange={(e) => setPlayer1(e.target.value)}
+                            />
+                            {option.label}
+                        </label>
+                    ))}
+                    <br />
+                    Player2 is :
+                    {options.map((option) => (
+                        <label key={option.value}>
+                            <input
+                                type="radio"
+                                name="player2"
+                                value={option.value}
+                                checked={player2 === option.value}
+                                onChange={(e) => setPlayer2(e.target.value)}
+                            />
+                            {option.label}
+                        </label>
+                    ))}
+                    <br />
+                    <button onClick={() => setSetupMode(false)}>Start Game</button>
                 </div>
-                <div className="game-info">
-                    {(stepNumber !== history.length - 1 || history.length === 1 || winner != null) ||
-                        <button onClick={() => regret()}>REGRET!!</button>}
-                    <div>{status}</div>
-                    {stepNumber === 9 || winner ?
-                        <button onClick={() => restartClick()}>Restart</button> :
-                        <ol>{moves}</ol>}
+            }
+            {isSetupMode || <div>
+                <div className="game">
+                    <div className="game-board">
+                        <Board
+                            squares={current}
+                            onClick={(i) => handleClick(i)}
+                        />
+                    </div>
+                    <div className="game-info">
+                        <div>{scoreBoard()}</div>
+                        {(!isEnded && stepNumber !== 0) && <button onClick={() => regret()}>REGRET!!</button>}
+                        <div>{status}</div>
+                        {stepNumber === 9 || winner ?
+                            <button onClick={() => restart()}>Restart</button> :
+                            <ol>{moves}</ol>}
+                    </div>
                 </div>
-            </div>
-            <div>{resultRenderFunc}</div>
+            </div> }
         </div>
     );
 }

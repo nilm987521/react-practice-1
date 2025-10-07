@@ -1,6 +1,6 @@
 .game {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 40px;
     padding: 20px;
 }
@@ -13,6 +13,7 @@
 
 .game-info {
     flex: 1;
+    min-width: 300px;
 }
 
 .game-info > div {
@@ -46,4 +47,12 @@
 
 .game-info button:hover {
     background: #9f8a76;
+}
+
+.green {
+    color: green;
+}
+
+.red {
+    color: red;
 }

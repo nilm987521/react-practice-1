@@ -42,8 +42,8 @@ function gameReducer(state = initialState, action) {
         case REGRET_STEP:
             return {
                 ...state,
-                history: state.history.slice(0, state.history.length - 1),
-                stepNumber: state.stepNumber - 1,
+                history: state.history.slice(0, state.history.length - 2),
+                stepNumber: state.stepNumber - 2,
             }
         case JUMP_TO_STEP:
             return {

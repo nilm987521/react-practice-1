@@ -138,8 +138,8 @@ class TicTacToeAI:
         q_values = {move: self.q_table[state][move] for move in valid_moves}
 
         # 如果 Q-table 沒有足夠的知識，使用 Minimax
-        # if all(v == 0 for v in q_values.values()) or len(self.q_table) < 100:
-        #     return self._get_minimax_move(board.copy())
+        if all(v == 0 for v in q_values.values()) or len(self.q_table) < 100:
+            return self._get_minimax_move(board.copy())
 
         max_q = max(q_values.values())
         # 如果有多個最佳移動，隨機選擇一個
